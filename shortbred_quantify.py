@@ -37,9 +37,9 @@ import gzip
 import time
 import math
 
-import shortbred_src as src
-from shortbred_src import quantify_functions
-sq = quantify_functions
+import src
+import src.quantify_functions
+sq = src.quantify_functions
 
 import numpy
 import bz2
@@ -201,10 +201,10 @@ elif args.strGenome!="" and args.strWGS==None and args.bUnannotated==True:
 	strSize = "small"
 	strFormat = "fasta"
 	sys.stderr.write("Treating input as an unannotated genome...\n")
-	sys.stderr.write("NOTE: When running against an unannotated bug genome, ShortBRED makes a \n\
-	tblastn database from the genome and then blasts the markers against it. \n\
-	Please remember to increase \"maxhits\" to a large number, so that multiple \n\
-	markers can hit each bug sequence. \n")
+	sys.stderr.write("NOTE: When running against an unannotated bug genome, ShortBRED makes a \
+	tblastn database from the genome and then blasts the markers against it. \
+	Please remember to increase \"maxhits\" to a large number, so that multiple \
+	markers can hit each bug sequence. ")
 	dictFamCounts = sq.MakeDictFamilyCounts(args.strMarkers,"")
 
 else:
@@ -267,7 +267,7 @@ for seq in SeqIO.parse(args.strMarkers, "fasta"):
 
 	#For ShortBRED Markers
 	else:
-		mtchStub = re.search(r'(.*)_([TJQ]M)[0-9]*_\#([0-9]*)',seq.id)
+		mtchStub = re.search(r'(.*)_(.M)[0-9]*_\#([0-9]*)',seq.id)
 		strStub = mtchStub.group(1)
 		strType = mtchStub.group(2)
 
@@ -298,10 +298,7 @@ for seq in SeqIO.parse(args.strMarkers, "fasta"):
 
 				if strID == strStub:
 					dMainFamProp = dProp
-                                try:
-				    dLenOverlap = (dProp/dMainFamProp) * len(seq)
-                                except ZeroDivisionError:
-                                    continue
+				dLenOverlap = (dProp/dMainFamProp) * len(seq)
 
 				# Reads from current family can map to the QM if overlap is as long
 				# as the minimum accepted read length. Or if it nearly overlaps
@@ -322,7 +319,7 @@ if strMethod=="wgs" and args.strSearchProg=="usearch":
 elif strMethod=="wgs" and args.strSearchProg=="rapsearch2":
 	strDBName = str(dirTmp) + os.sep + os.path.basename(str(args.strMarkers)) + ".rap2db"
 	strDBName = os.path.abspath(strDBName)
-	print("strDBName is",strDBName)
+	print "strDBName is",strDBName
 	sq.MakedbRapsearch2 (args.strMarkers, strDBName,args.strPrerapPath)
 
 #(If profiling genome, make a database from the genome reads in Step 3.)
@@ -330,10 +327,10 @@ elif strMethod=="wgs" and args.strSearchProg=="rapsearch2":
 
 ##################################################################################
 #Step 2: Get information on WGS file(s), put it into aaFileInfo.
-sys.stderr.write( "\nExamining WGS data:")
+#sys.stderr.write( "\nExamining WGS data:")
 """
 aaFileInfo is array of string arrays, each with details on the file so ShortBRED
-knows how to process it efficiently. Each line has the format:
+knows how to process it efficiently. Each line has the format:files in 
 	[filename, format, "large" or "small", extract method, and corresponding tarfile (if needed)]
 
 An example:
@@ -387,9 +384,9 @@ if strMethod=="wgs":
 			aaWGSInfo.append(astrFileInfo)
 
 
-	sys.stderr.write( "\nList of files in WGS set (after unpacking tarfiles):")
+	sys.stderr.write( "\nList of files in WGS set (after unpacking tarfiles):\n")
 	for astrWGS in aaWGSInfo:
-		sys.stderr.write( astrWGS[0]+" ")
+		sys.stderr.write( astrWGS[0]+" [{0}: {1}]\n".format(strMethod, strExtractMethod))
 
 	sys.stderr.write("\n\n")
 ##################################################################################
@@ -444,17 +441,20 @@ elif strMethod=="unannotated_genome":
 else:
 	with open(strLog, "a") as log:
 		log.write('\t'.join(["# FileName","size","format","extract method","tar file (if part of one)"]) + '\n')
-		#log.write("Reads processed" + "\n")
+		log.write("Reads processed" + "\n")
 
 	for astrFileInfo in aaWGSInfo:
 		strWGS,strFormat,strSize,strExtractMethod,strMainTar = astrFileInfo
+		sys.stderr.write( " -> " + "\n -> ".join([strWGS,strFormat,strSize,strExtractMethod,strMainTar]))
+
 		with open(strLog, "a") as log:
 			log.write(str(iWGSFileCount) + ": " + '\t'.join(astrFileInfo) + '\n')
 		iWGSReads = 0
-		sys.stderr.write( "Working on file " + str(iWGSFileCount) + " of " + str(len(aaWGSInfo)) + "\n")
+		sys.stderr.write( "Working on file " + str(iWGSFileCount) + " of " + str(len(aaWGSInfo)) + "\n" + "format: " + strFormat) 
 
         #If it's a small fasta file, just give it to USEARCH or rapsearch  directly.
-		if strFormat=="fasta" and strSize=="small":
+		if strFormat=="fasta" and strSize=="small" and strExtractMethod == "":
+			sys.stderr.write("	[455] Small, fasta, uncompressed\n")
 			if args.strSearchProg=="rapsearch2":
 				sq.RunRAPSEARCH2(strMarkers=args.strMarkers, strWGS=strWGS,strDB=strDBName, strBlastOut = strBlast,iThreads=args.iThreads,dID=args.dID, dirTmp=dirTmp,
 				iAccepts=args.iMaxHits, iRejects=args.iMaxRejects,strRAPSEARCH2=args.strRap2Path )
@@ -465,7 +465,7 @@ else:
 
 
 		
-			elif args.strSearchProg=="usearch":
+			elif args.strSearchProg=="usearch" and strExtractMethod == "":
 				sq.RunUSEARCH(strMarkers=args.strMarkers, strWGS=strWGS,strDB=strDBName, strBlastOut = strBlast,iThreads=args.iThreads,dID=args.dID, dirTmp=dirTmp,
 				iAccepts=args.iMaxHits, iRejects=args.iMaxRejects,strUSEARCH=args.strUSEARCH )
 				sq.StoreHitCounts(strBlastOut = strBlast,strValidHits=strHitsFile, dictHitsForMarker=dictHitsForMarker,dictMarkerLen=dictMarkerLen,
@@ -494,6 +494,7 @@ else:
 			iFileCount = 1
 
 			strFASTAName = str(dirTmp) + os.sep + 'fasta.fna'
+			sys.stderr.write("	[495 strFASTAName] {}\n".format(strFASTAName))
 
 			#Unpack file with appropriate extract method
 			if (strExtractMethod== 'r:bz2' or strExtractMethod=='r:gz'):
@@ -503,6 +504,7 @@ else:
 			elif strExtractMethod== 'gz':
 				sys.stderr.write("Unpacking gz file... this may take several minutes. ")
 				streamWGS = gzip.open(strWGS, 'rb')
+				strFormat="fasta"
 			elif strExtractMethod== 'bz2':
 				sys.stderr.write("Unpacking bz2 file... this may take several minutes. ")
 				sys.stderr.write(strMainTar)
@@ -515,13 +517,14 @@ else:
 			#Open file for writing
 			fileFASTA = open(strFASTAName, 'w')
 
-			"""
+			
 			if strFormat=="unknown":
 				strFormat="fastq"
 			if streamWGS==None:
 				with open(strLog, "a") as log:
+					sys.stderr.write("File was empty." + '\n')
 					log.write("File was empty." + '\n')
-             """
+            
 
 			#Start the main loop to get everything in streamWGS -> small fasta file -> counted and stored
 			for seq in SeqIO.parse(streamWGS, strFormat):
