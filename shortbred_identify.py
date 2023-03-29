@@ -44,12 +44,12 @@ import math
 try:
     import Bio
 except ImportError:
-    print("\nShortBRED was unable to load Biopython. Please check to make sure you have Biopython installed (http://biopython.org/wiki/Main_Page), and that its directory is in your PYTHONPATH. \n")
+    print "\nShortBRED was unable to load Biopython. Please check to make sure you have Biopython installed (http://biopython.org/wiki/Main_Page), and that its directory is in your PYTHONPATH. \n"
     sys.exit(1)
 
-import shortbred_src as src
-from shortbred_src import process_blast
-pb = process_blast
+import src
+import src.process_blast
+pb = src.process_blast
 
 from Bio.Seq import Seq
 from Bio.SeqRecord import SeqRecord
@@ -152,14 +152,14 @@ if len(sys.argv)==1:
     #iReturnCode = oCmd.returncode
     #return iReturnCode
 
-print("Checking dependencies...")
+print "Checking dependencies..."
 src.CheckDependency(args.strUSEARCH,"","usearch")    
 src.CheckDependency(args.strBLASTP,"-h","blastp")
 src.CheckDependency(args.strMUSCLE,"-h","muscle")
 src.CheckDependency(args.strCDHIT,"-h","cdhit")
 src.CheckDependency(args.strMAKEBLASTDB,"-h","makeblastdb")
 
-print("Checking to make sure that installed version of usearch can make databases...")
+print "Checking to make sure that installed version of usearch can make databases..."
 pCmd = subprocess.Popen([args.strUSEARCH,"-help","makeudb_usearch"],stdout=subprocess.PIPE,stderr=subprocess.PIPE)
 pCmd.communicate()[0]
 if (pCmd.returncode==0):
@@ -229,7 +229,6 @@ strBlastRef = args.sRefBlast
 strBlastSelf = args.sGOIBlast
 strMapFile = args.sMapIn
 
-
 ################################################################################
 # Step One: Cluster input genes and make into a blast database.
 #
@@ -268,7 +267,7 @@ if(iMode==1 or iMode==2):
 
 	sys.stderr.write( "Making a fasta file for each protein family...\n")
 	#Make a fasta file for each CD-HIT cluster
-	pb.MakeFamilyFastaFiles( strMapFile, str(args.sGOIProts), dirFams, log)
+	pb.MakeFamilyFastaFiles( strMapFile, str(args.sGOIProts), dirFams)
 
 	sys.stderr.write( "Aligning sequences in each family, producing consensus sequences...\n")
 	#Call MUSCLE + EMBOSS_CONS OR DUMB CONSENSUS to get consensus seq for each cluster,overwrite the CD-HIT cluster file
@@ -666,8 +665,6 @@ with open(args.sMarkers,'w') as fOut:
 			SeqIO.write(gene, fOut,"fasta")
 
 sys.stderr.write( "\nProcessing complete! Final markers saved to " + args.sMarkers + "\n")
-sys.stderr.write( "\nNOTE: Please open and read the log file before using the markers\
-. Warnings about individual sequences will appear in the log.\n\n")
 
 iQMMinimal = iQM
 iMarkers = iTM + iQMJunction + iQMMinimal
